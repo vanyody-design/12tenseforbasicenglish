@@ -1,0 +1,10 @@
+# เครื่องมือระหว่างพัฒนา
+.claude/
+
+# ไฟล์ที่ Windows / OneDrive สร้างเอง
+Thumbs.db
+desktop.ini
+*.lnk
+
+# ไฟล์ระบบ macOS
+.DS_Store

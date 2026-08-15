@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="th" data-theme="auto">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tense Lab — ฝึก 12 Tenses ภาษาอังกฤษ</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✎</text></svg>">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap topbar-in">
+    <button class="brand" data-nav="home">
+      <span class="brand-mark">T</span>
+      <span class="brand-name">Tense&nbsp;Lab</span>
+    </button>
+
+    <nav class="nav">
+      <button data-nav="home">บทเรียน</button>
+      <button data-nav="signals">คำบอกเวลา</button>
+      <button data-nav="stats">สถิติ</button>
+      <button data-nav="rules">กติกา</button>
+    </nav>
+
+    <div class="topbar-right">
+      <div class="xp-chip" id="xpChip" title="ค่าประสบการณ์">
+        <span id="lvlText">Lv.1</span>
+        <span class="xp-bar"><i id="xpFill"></i></span>
+      </div>
+      <button class="icon-btn" id="themeBtn" title="สลับธีมสว่าง/มืด">◐</button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap" id="screen"></main>
+
+<footer class="wrap foot">
+  <span>Tense Lab · ฝึกไวยากรณ์อังกฤษครบ 12 Tenses</span>
+  <span>ความคืบหน้าถูกบันทึกไว้ในเครื่องของคุณ</span>
+</footer>
+
+<script src="data.js"></script>
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
