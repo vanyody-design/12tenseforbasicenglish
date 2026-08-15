@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ตัวอย่างระบบ Login ด้วย Firebase — Email &amp; Password</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔐</text></svg>">
+<style>
+:root {
+  --bg: #fbfbfa; --surface: #fff; --fg: #16161a; --muted: #6b6b76; --faint: #9a9aa5;
+  --line: #e7e7e4; --line-strong: #d6d6d1; --accent: #2f5bea; --accent-soft: #eef2fe;
+  --ok: #1c7c54; --ok-soft: #e9f5ef; --bad: #c0392f; --bad-soft: #fdeeec;
+  --warn: #9a6700; --warn-soft: #fdf6e3;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f0f11; --surface: #17171a; --fg: #ececf0; --muted: #9a9aa5; --faint: #6b6b76;
+    --line: #262629; --line-strong: #35353a; --accent: #7d9bff; --accent-soft: #1b2338;
+    --ok: #57c99a; --ok-soft: #14261e; --bad: #f0796c; --bad-soft: #2b1715;
+    --warn: #e3b341; --warn-soft: #2a2313;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--fg);
+  font-family: "Sarabun", "IBM Plex Sans Thai", -apple-system, "Segoe UI", "Noto Sans Thai", system-ui, sans-serif;
+  font-size: 16px; line-height: 1.65; -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 460px; margin: 0 auto; padding: 46px 20px 70px; }
+h1 { font-size: 23px; letter-spacing: -.4px; margin: 0 0 6px; font-weight: 680; }
+.lede { color: var(--muted); font-size: 14px; margin: 0 0 24px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 22px; }
+.hidden { display: none !important; }
+
+.tabs { display: flex; gap: 2px; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 3px; margin-bottom: 20px; }
+.tabs button { flex: 1; font: inherit; font-size: 14px; cursor: pointer; border: 0; background: none; color: var(--muted); padding: 7px; border-radius: 7px; }
+.tabs button.on { background: var(--surface); color: var(--fg); box-shadow: 0 1px 2px rgba(0,0,0,.06); }
+
+label { display: block; font-size: 12.5px; color: var(--muted); margin: 0 0 5px; }
+.field { margin-bottom: 14px; }
+input[type=text], input[type=email], input[type=password] {
+  width: 100%; font: inherit; font-size: 15px; color: var(--fg);
+  background: var(--bg); border: 1px solid var(--line-strong); border-radius: 10px; padding: 11px 13px;
+}
+input:focus { outline: none; border-color: var(--accent); }
+.with-eye { position: relative; }
+.with-eye input { padding-right: 58px; }
+.with-eye button {
+  position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+  font: inherit; font-size: 12.5px; cursor: pointer; color: var(--muted);
+  background: none; border: 0; padding: 5px 8px; border-radius: 6px;
+}
+.with-eye button:hover { color: var(--fg); }
+
+.row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 18px; }
+.check { display: flex; align-items: center; gap: 7px; font-size: 13px; color: var(--muted); cursor: pointer; }
+.check input { accent-color: var(--accent); }
+
+.btn {
+  font: inherit; cursor: pointer; border-radius: 10px; padding: 11px 18px; width: 100%;
+  border: 1px solid var(--line-strong); background: var(--surface); color: var(--fg);
+}
+.btn.primary { background: var(--fg); color: var(--bg); border-color: var(--fg); font-weight: 600; }
+.btn.primary:hover { opacity: .88; }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.btn.link { border: 0; background: none; color: var(--muted); font-size: 13px; width: auto; padding: 0; text-decoration: underline; text-underline-offset: 2px; }
+.btn.link:hover { color: var(--fg); }
+
+.banner { border-radius: 10px; padding: 11px 14px; font-size: 13.5px; margin-bottom: 18px; border: 1px solid; }
+.banner.info { background: var(--accent-soft); border-color: transparent; color: var(--accent); }
+.banner.ok   { background: var(--ok-soft);  border-color: var(--ok);  color: var(--ok); }
+.banner.bad  { background: var(--bad-soft); border-color: var(--bad); color: var(--bad); }
+.banner.warn { background: var(--warn-soft);border-color: var(--warn);color: var(--warn); }
+
+.uinfo { display: grid; gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; margin-bottom: 18px; }
+.uinfo div { background: var(--surface); padding: 10px 13px; display: flex; gap: 12px; align-items: baseline; }
+.uinfo b { font-size: 12px; color: var(--muted); font-weight: 550; min-width: 74px; }
+.uinfo span { font-size: 14px; word-break: break-all; }
+.uinfo span.mono { font-family: var(--mono); font-size: 12px; }
+.pill { font-size: 11.5px; padding: 2px 9px; border-radius: 999px; }
+.pill.ok { background: var(--ok-soft); color: var(--ok); }
+.pill.warn { background: var(--warn-soft); color: var(--warn); }
+
+.note { font-size: 12.5px; color: var(--faint); line-height: 1.7; margin-top: 22px; }
+.note code { font-family: var(--mono); font-size: .92em; background: var(--accent-soft); color: var(--accent); padding: 1px 5px; border-radius: 5px; }
+.stack { display: grid; gap: 9px; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <h1>เข้าสู่ระบบ</h1>
+  <p class="lede">ตัวอย่างระบบสมาชิกด้วยอีเมลและรหัสผ่าน โดยใช้ Firebase Authentication</p>
+
+  <div id="banner" class="banner hidden"></div>
+
+  <!-- ========== ยังไม่ล็อกอิน ========== -->
+  <div id="authView" class="card">
+    <div class="tabs">
+      <button data-tab="signin" class="on">เข้าสู่ระบบ</button>
+      <button data-tab="signup">สมัครสมาชิก</button>
+    </div>
+
+    <!-- เข้าสู่ระบบ -->
+    <div id="signInPane" class="pane">
+      <div class="field">
+        <label for="siEmail">อีเมล</label>
+        <input type="email" id="siEmail" autocomplete="email" placeholder="you@example.com">
+      </div>
+      <div class="field">
+        <label for="siPass">รหัสผ่าน</label>
+        <div class="with-eye">
+          <input type="password" id="siPass" autocomplete="current-password" placeholder="รหัสผ่าน">
+          <button type="button" data-eye="siPass">ดู</button>
+        </div>
+      </div>
+      <div class="row">
+        <label class="check"><input type="checkbox" id="siRemember" checked> จำฉันไว้</label>
+        <button class="btn link" id="resetBtn">ลืมรหัสผ่าน?</button>
+      </div>
+      <button class="btn primary" id="signInBtn">เข้าสู่ระบบ</button>
+    </div>
+
+    <!-- สมัครสมาชิก -->
+    <div id="signUpPane" class="pane hidden">
+      <div class="field">
+        <label for="suName">ชื่อที่ใช้แสดง <span style="color:var(--faint)">(ไม่บังคับ)</span></label>
+        <input type="text" id="suName" autocomplete="name" placeholder="ชื่อของคุณ">
+      </div>
+      <div class="field">
+        <label for="suEmail">อีเมล</label>
+        <input type="email" id="suEmail" autocomplete="email" placeholder="you@example.com">
+      </div>
+      <div class="field">
+        <label for="suPass">รหัสผ่าน <span style="color:var(--faint)">(อย่างน้อย 6 ตัวอักษร)</span></label>
+        <div class="with-eye">
+          <input type="password" id="suPass" autocomplete="new-password" placeholder="ตั้งรหัสผ่าน">
+          <button type="button" data-eye="suPass">ดู</button>
+        </div>
+      </div>
+      <div class="field">
+        <label for="suPass2">ยืนยันรหัสผ่าน</label>
+        <input type="password" id="suPass2" autocomplete="new-password" placeholder="พิมพ์รหัสผ่านอีกครั้ง">
+      </div>
+      <button class="btn primary" id="signUpBtn">สมัครสมาชิก</button>
+    </div>
+  </div>
+
+  <!-- ========== ล็อกอินแล้ว ========== -->
+  <div id="userView" class="card hidden">
+    <div class="uinfo">
+      <div><b>ชื่อ</b><span id="uName"></span></div>
+      <div><b>อีเมล</b><span id="uEmail"></span></div>
+      <div><b>สถานะ</b><span id="uVerified" class="pill"></span></div>
+      <div><b>User ID</b><span id="uId" class="mono"></span></div>
+    </div>
+    <div class="stack">
+      <button class="btn" id="resendBtn">ส่งอีเมลยืนยันอีกครั้ง</button>
+      <button class="btn primary" id="signOutBtn">ออกจากระบบ</button>
+    </div>
+  </div>
+
+  <p class="note">
+    ตัวอย่างนี้ต้องเปิดผ่าน <b>http:// หรือ https://</b> เท่านั้น เปิดด้วย <code>file://</code> จะไม่ทำงาน
+    เพราะเบราว์เซอร์บล็อกการโหลด ES Module ข้ามที่มา — รันด้วย <code>npx serve .</code> แล้วเปิดลิงก์ที่ได้
+    <br><br>
+    อ่านวิธีตั้งค่า Firebase ทีละขั้นได้ใน <code>README.md</code> ในโฟลเดอร์นี้
+  </p>
+</div>
+
+<script>
+/* ถ้าโมดูลโหลดไม่สำเร็จ (ออฟไลน์ / CDN ล่ม / เปิดด้วย file://) หน้าเว็บจะเงียบสนิท
+   ไม่มีอะไรบอกผู้ใช้เลย ตัวนี้จึงคอยดูว่า auth.js เริ่มทำงานจริงหรือเปล่า */
+window.__authBooted = false;
+setTimeout(() => {
+  if (window.__authBooted) return;
+  const b = document.getElementById('banner');
+  b.className = 'banner bad';
+  b.textContent = 'เริ่มระบบไม่สำเร็จ — ตรวจว่าต่ออินเทอร์เน็ตอยู่ และเปิดหน้านี้ผ่าน http:// ไม่ใช่ file://';
+}, 6000);
+</script>
+<script type="module" src="auth.js"></script>
+</body>
+</html>
