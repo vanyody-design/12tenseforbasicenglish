@@ -64,7 +64,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset
 .navlink:hover::after{transform:scaleX(1)}
 .bagcount{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 5px;border-radius:9px;
   background:var(--ink);color:var(--wall);font-family:var(--f-mono);font-size:10px;letter-spacing:0;margin-left:6px}
-body.on-item .top{color:var(--stage-fg)}
+body.on-item .top{color:var(--stage-fg);position:absolute}
 body.on-item .top .right{color:var(--ink)}
 
 .about{position:fixed;z-index:39;top:calc(64px + env(safe-area-inset-top,0px));left:max(20px,env(safe-area-inset-left,0px));
@@ -603,8 +603,11 @@ const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const store = { get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},
                 set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}} };
 
-const S = { view:"rack", idx:0, side:"front", active:0, cw:{}, size:null, qty:1, bag:store.get("soi11-bag",[]) };
+const S = { view:"rack", idx:0, side:"front", active:0, cw:{}, size:null, qty:1, bag:[] };
 PRODUCTS.forEach(p=>S.cw[p.id]=0);
+(function(){const saved=store.get("soi11-bag",[]);
+  S.bag=(Array.isArray(saved)?saved:[]).filter(b=>{const p=b&&PRODUCTS.find(x=>x.id===b.id);
+    return p && p.colorways[b.ci] && SIZES.includes(b.size) && b.qty>0;});})();
 const P = () => PRODUCTS[S.idx];
 const wrap = i => (i + PRODUCTS.length) % PRODUCTS.length;
 
@@ -628,9 +631,12 @@ function setActive(i, scroll){
 const hoverable = matchMedia("(hover: hover)").matches;
 $("slots").addEventListener("pointerover", e=>{ const s=e.target.closest(".slot"); if(s && hoverable) setActive(+s.dataset.i); });
 $("slots").addEventListener("focusin", e=>{ const s=e.target.closest(".slot"); if(s) setActive(+s.dataset.i); });
+let downActive=null, downTouch=false;
+$("slots").addEventListener("pointerdown", e=>{ downActive=S.active; downTouch=e.pointerType==="touch"; }, true);
 $("slots").addEventListener("click", e=>{
   const s=e.target.closest(".slot"); if(!s) return; const i=+s.dataset.i;
-  if (!hoverable && S.active!==i){ setActive(i,true); return; }   // touch: first tap faces it forward
+  const wasActive = downActive===null ? S.active===i : downActive===i; const touch=downTouch||!hoverable; downActive=null; downTouch=false;
+  if (touch && e.detail>0 && !wasActive){ setActive(i,true); return; }   // touch: first tap faces it forward
   openLook(i, s.querySelector(".g"));
 });
 $("availBtn").onclick = ()=> go("item", S.active);
@@ -670,11 +676,14 @@ function step(d){
   if (reduce) return;
   $("lookG").animate([{transform:`translateX(${d*90}px) rotate(${d*7}deg)`,opacity:0},{transform:`rotate(${-d*3}deg)`,opacity:1,offset:.55},{transform:`rotate(${d*1.2}deg)`,offset:.8},{transform:"none"}],{duration:750,easing:"cubic-bezier(.2,.8,.2,1)"});
 }
+let flipping=false;
 function flip(side){
-  if (side===S.side) return;
-  const g=$("lookG");
+  if (side===S.side || flipping) return;
+  const g=$("lookG"), at=S.idx;
   if (reduce){ S.side=side; renderLook(); return; }
+  flipping=true;
   g.animate([{transform:"perspective(1200px) rotateY(0)"},{transform:"perspective(1200px) rotateY(90deg)"}],{duration:220,easing:"ease-in"}).onfinish=()=>{
+    flipping=false; if (S.idx!==at || S.view!=="look") return;
     S.side=side; renderLook();
     g.animate([{transform:"perspective(1200px) rotateY(-90deg)"},{transform:"perspective(1200px) rotateY(0)"}],{duration:320,easing:"cubic-bezier(.2,.8,.2,1)"});
   };
@@ -726,10 +735,11 @@ $("qtyPlus").onclick=()=>{const p=P(); const max=S.size?stockOf(p,S.cw[p.id],S.s
 function addToBag(){
   const p=P(), ci=S.cw[p.id]; if(!S.size) return false;
   const max=stockOf(p,ci,S.size), hit=S.bag.find(b=>b.id===p.id&&b.ci===ci&&b.size===S.size);
+  if (hit && hit.qty>=max){ toast(`All ${max} in ${S.size} are already in your bag`); return "full"; }
   if (hit) hit.qty=Math.min(max,hit.qty+S.qty); else S.bag.push({id:p.id,ci,size:S.size,qty:S.qty});
   store.set("soi11-bag",S.bag); renderBag(); return true;
 }
-$("addBtn").onclick=()=>{ if(addToBag()) toast(`Added ${P().name} · ${S.size}`); };
+$("addBtn").onclick=()=>{ if(addToBag()===true) toast(`Added ${P().name} · ${S.size}`); };
 $("buyBtn").onclick=()=>{ if(addToBag()) openBag(); };
 
 /* ================= bag ================= */
@@ -762,7 +772,8 @@ document.addEventListener("click",e=>{ if(!$("about").hidden && !e.target.closes
 function setHash(replace){
   const h = S.view==="rack" ? "rack" : `${S.view}-${P().id}`;
   if (location.hash.slice(1)===h) return;
-  if (replace) history.replaceState(null,"","#"+h); else location.hash=h;
+  if (replace){ try{ history.replaceState(null,"","#"+h); return; }catch(e){} }
+  location.hash=h;
 }
 function go(view, i){
   if (i!=null) S.idx=i;
@@ -776,12 +787,13 @@ function fromHash(){
   const i = m ? PRODUCTS.findIndex(p=>p.id===m[2]) : -1;
   const want = m && i>=0 ? m[1] : "rack";
   if (want===S.view && (want==="rack" || i===S.idx)) return;
-  go(want, i>=0 ? i : S.active);
+  go(want, i>=0 ? i : (S.view==="rack" ? S.active : S.idx));
 }
 document.querySelectorAll("[data-go]").forEach(b=>b.addEventListener("click",()=>{ closeBag(); go(b.dataset.go, S.view==="rack"?S.active:S.idx); }));
 window.addEventListener("hashchange", fromHash);
 document.addEventListener("keydown",e=>{
-  if (e.key==="Escape"){ if(!$("bag").hidden) return closeBag(); if(S.view==="look") return closeLook(); if(S.view==="item") return go("look",S.idx); }
+  if (e.key==="Escape"){ if(!$("bag").hidden) return closeBag(); if(!$("about").hidden){ $("about").hidden=true; $("aboutBtn").setAttribute("aria-expanded","false"); return; } if(S.view==="look") return closeLook(); if(S.view==="item") return go("look",S.idx); }
+  if (!$("bag").hidden) return;
   if (S.view==="look"){ if(e.key==="ArrowLeft") step(-1); if(e.key==="ArrowRight") step(1); if(e.key==="f") flip(S.side==="front"?"back":"front"); }
   if (S.view==="rack" && (e.key==="ArrowLeft"||e.key==="ArrowRight")){ setActive(wrap(S.active+(e.key==="ArrowLeft"?-1:1)),true); document.querySelector(`.slot[data-i="${S.active}"]`).focus(); }
 });
